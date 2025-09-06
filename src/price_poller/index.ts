@@ -48,12 +48,13 @@ const producer=kafkaClient.producer()
 const PublishDataKafka=async()=>{
     console.log('prices',prices)
     await producer.connect()
-         producer.send({
-                topic:'prices',
-                messages:[
-                    {value:JSON.stringify(prices)}
-                ]
-            })
+    const pricesObject = Object.fromEntries(prices)
+    producer.send({
+        topic:'prices',
+        messages:[
+            {value:JSON.stringify(pricesObject)}
+        ]
+    })
 }
 const startPoll=()=>{
     
