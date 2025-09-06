@@ -109,10 +109,8 @@ console.log('final offset',finalOffset)
         tempConsumer.run({
             eachMessage: async ({ message, partition }) => {
                 if (!message.value) return;
-const buf=Buffer.from(JSON.stringify(message), 'utf8')
-const obj=JSON.parse(buf.toString('utf-8')).value.toString('utf-8')
                 const pricesObj = JSON.parse(message.value.toString());
-                console.log('prices are coming',obj)
+                console.log('Prices received from Kafka:', pricesObj);
                 clearTimeout(timeout);
                 resolve(pricesObj);
                 await tempConsumer.stop();
