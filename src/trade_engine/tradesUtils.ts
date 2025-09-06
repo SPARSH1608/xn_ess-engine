@@ -4,39 +4,42 @@ import { v4 as uuid } from "uuid";
 import type { KafkaResponse,closeType,Trade } from "./types.js";
 import { StatusCodes } from "http-status-codes";
 
-function insertDecimal(x: number, y: number): number {
+export function insertDecimal(x: number, y: number): number {
   return x / Math.pow(10, y);
 }
 
 
 export const handleOpenLong = (trade: Trade) => {
-
+  trade.decimal=4
+console.log('trade in enginjer',trade)
   if (!trade.boughtPrice || !trade.quantity || !trade.asset || !trade.userId) {
    return failureKafka({error:"Check Parameters provided" ,StatusCode:StatusCodes.BAD_REQUEST},trade.tradeId);
   }
 
   const finalLeverage = Number(trade.leverage) || 1;
-  const finalMargin = insertDecimal(trade.quantity * trade.boughtPrice, trade.decimal);
 
   const user = users[trade.userId];
+  console.log('all users',users)
+  console.log('user found',user)
   if (!user) {
    return failureKafka({error:"No user Found" ,StatusCode:StatusCodes.NOT_FOUND},trade.tradeId);
 
   }
 
   const requiredMargin = insertDecimal(
-    trade.quantity * trade.boughtPrice * finalLeverage,
+   ( (trade.quantity * trade.boughtPrice) / finalLeverage),
     trade.decimal
   );
-
+console.log('required margin',requiredMargin)
   if (user.balance < requiredMargin) {
      return failureKafka({error:"Insufficient balance" ,StatusCode:StatusCodes.NOT_FOUND},trade.tradeId);
   }
 
-  user.balance -= finalMargin;
+  user.balance -= requiredMargin;
+  console.log('balance after trade',user.balance)
   const data = {
     ...trade,
-    margin: finalMargin,
+    margin: requiredMargin,
     leverage: finalLeverage,
     status: "OPEN",
 
@@ -68,7 +71,7 @@ export const handleCloseLong=(incomingData:closeType):KafkaResponse=>{
     if(!userTrade){
          return failureKafka({error:"No Trade found for this tradeId" ,StatusCode:StatusCodes.NOT_FOUND},incomingData.tradeId);
     }
-    const pnl=insertDecimal(incomingData?.closedPrice-userTrade.boughtPrice,4)
+    const pnl=insertDecimal((insertDecimal(incomingData?.closedPrice-userTrade.boughtPrice,4))*userTrade.quantity,4)
     user.balance=user.balance+pnl
   const data={
     ...userTrade,
@@ -79,13 +82,12 @@ export const handleCloseLong=(incomingData:closeType):KafkaResponse=>{
   }
   
   const newTrades=user.trades.filter(t=>t.tradeId!=incomingData.tradeId);
-  newTrades.push(data)
   users[incomingData.userId] = {...user, trades: newTrades}
   return successKafka({success:true,data,error:""});
 }
 
 export const handleOpenShort=(trade:Trade)=>{
-  
+  trade.decimal = 4; 
    if (!trade.boughtPrice || !trade.quantity || !trade.asset || !trade.userId) {
    return failureKafka({error:"Check Parameters provided" ,StatusCode:StatusCodes.BAD_REQUEST},trade.tradeId);
 
@@ -109,7 +111,6 @@ export const handleOpenShort=(trade:Trade)=>{
     user.balance-=finalMargin
       const res = {
     ...trade,
-    tradeId:uuid(),
     margin: finalMargin,
     leverage: finalLeverage,
     status: "OPEN",
@@ -121,12 +122,17 @@ return successKafka({success:true,data:res,error:""});
 }
 
 export const handleCloseShort=(trade:closeType):KafkaResponse=>{
+  console.log('trade in close short',trade)
      if(!trade.tradeId || !trade.closedPrice){
          return failureKafka({error:"Check Parameters provided" ,StatusCode:StatusCodes.BAD_REQUEST},trade.tradeId);
 
     }
     const user=users[trade.userId]
+    console.log('user in close short',user)
+    
     let userTrade=user?.trades.find((t)=>t.tradeId===trade.tradeId)
+    console.log('trade to be closed',userTrade)
+    
     if(!user){
        return failureKafka({error:"No user Found" ,StatusCode:StatusCodes.NOT_FOUND},trade.tradeId);
     
@@ -136,20 +142,20 @@ export const handleCloseShort=(trade:closeType):KafkaResponse=>{
 
        
     }
-    const pnl=insertDecimal(userTrade.boughtPrice-trade?.closedPrice,4)
+    const pnl=insertDecimal((userTrade.boughtPrice-trade?.closedPrice)*userTrade.quantity,4)
   if(user){
     user.balance=user.balance+pnl
   }
   const data={
     ...userTrade,
+    closedPrice:trade.closedPrice,
     status:'CLOSED',
     closedAt:new Date(),
     pnl
   }
     const newTrades=user.trades.filter(t=>t.tradeId!=trade.tradeId);
-  newTrades.push(data)
-  users[trade.userId] = {...user, trades: newTrades}
 
+  users[trade.userId] = {...user, trades: newTrades}
 return successKafka({success:true,data,error:""});
   
 }

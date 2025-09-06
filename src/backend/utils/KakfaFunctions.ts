@@ -14,7 +14,7 @@ const consumer=kafkaClient.consumer({groupId:'api-response'})
 await producer.connect()
 
 
-const findOffset=async(tradeTime:number,topic:string):Promise<Offset[]>=>{
+const findOffset=async(tradeTime:number,topic:string)=>{
     const admin=kafkaClient.admin()
    await admin.connect()
     
@@ -29,44 +29,44 @@ const findOffset=async(tradeTime:number,topic:string):Promise<Offset[]>=>{
 }
 // offset [ { partition: 0, offset: '1446' } ]
 export const consumeTrade=async(tradeId:string,tradeTime:number)=>{
+    console.log('tradeId with time',tradeId)
    const tempConsumer = kafkaClient.consumer({ groupId: `api-resp-${uuid()}` });
     
     await tempConsumer.connect()
     await tempConsumer.subscribe({topic:'responses',fromBeginning:false})
-    let offset=await findOffset(tradeTime,'responses')
-    
-    const finalOffset=offset[offset.length-1]?.offset
-    const finalPartition=offset[offset.length-1]?.partition
+  const offsetArr = await findOffset(tradeTime, 'responses');
+const finalOffset = offsetArr[offsetArr.length - 1]?.offset;
+const finalPartition = offsetArr[offsetArr.length - 1]?.partition;
     console.log('partitioned at',finalOffset,finalPartition)
  if (finalOffset == null || finalPartition == null) {
     return new Error('No partition or offset found');
 }
+  let latestTrades: any = await new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+            tempConsumer.stop();
+            resolve({});
+        }, 10000);
 
-tempConsumer.run({
-    eachMessage:async({message})=>{
-        const data=JSON.parse(message.value?.toString() || "{}")
-        messages.push(data)
-    }
-})
-    await tempConsumer.seek({
-        topic:'responses',
-        partition:finalPartition,
-         offset:finalOffset
-    })
-    const messages:any[]=[]
-    await new Promise<void>((resolve)=>{
-       setTimeout(
-        async()=>{
-            await tempConsumer.stop()
-            resolve()
-        },5000)
-        
-    })
-    console.log('messages',messages)
-    const matchedResponse=messages.find(msg=>msg.tradeId===tradeId)
-    
+        tempConsumer.run({
+            eachMessage: async ({ message, partition }) => {
+                if (!message.value) return;
+            const valueStr = message.value.toString('utf-8');
+            const tradesObj = JSON.parse(valueStr);
+            resolve(tradesObj);
+          
+            },
+        }).then(async () => {
+            await tempConsumer.seek({
+                topic: 'responses',
+                partition: finalPartition,
+                offset: finalOffset,
+            });
+        });
+    });
+
+    console.log('trades',latestTrades)
     await tempConsumer.disconnect()
-    return matchedResponse
+    return latestTrades
     
 }
 
@@ -74,7 +74,11 @@ export const sendTrade=async(tradeData:Trade)=>{
     const tradeId=uuid()
     const tradeTime=Date.now()
     console.log('tradetime',tradeTime)
-    tradeData.tradeId=tradeId
+    if(tradeData.trade_type==='OPEN_LONG' || tradeData.trade_type==='OPEN_SHORT'){
+        
+        tradeData.tradeId=tradeId
+    }
+    
     await producer.send({
         topic:'trades',
         messages:[{
@@ -100,22 +104,19 @@ console.log('final offset',finalOffset)
         return new Error('No offset found');
     }
 
-    const latestPrices: any = await new Promise((resolve) => {
-        const timeout = setTimeout(async () => {
-            await tempConsumer.stop();
+    let latestPrices: any = await new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+            tempConsumer.stop();
             resolve({});
         }, 5000);
 
         tempConsumer.run({
             eachMessage: async ({ message, partition }) => {
                 if (!message.value) return;
-const buf=Buffer.from(JSON.stringify(message), 'utf8')
-const obj=JSON.parse(buf.toString('utf-8')).value.toString('utf-8')
-                const pricesObj = JSON.parse(message.value.toString());
-                console.log('prices are coming',obj)
-                clearTimeout(timeout);
-                resolve(pricesObj);
-                await tempConsumer.stop();
+            const valueStr = message.value.toString('utf-8');
+            const pricesObj = JSON.parse(valueStr);
+            resolve(pricesObj);
+          
             },
         }).then(async () => {
             await tempConsumer.seek({
@@ -127,5 +128,6 @@ const obj=JSON.parse(buf.toString('utf-8')).value.toString('utf-8')
     });
 
     await tempConsumer.disconnect();
+
     return latestPrices;
 };

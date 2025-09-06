@@ -12,6 +12,7 @@ const snapshot=snapshotModel
 export async function saveSnapShot(){
     
     const snap=getSnapshot()
+    console.log('saving snap',JSON.parse(JSON.stringify(snap)))
     await snapshot.create({snapshot:snap})
     console.log('snap created ')
 }
@@ -22,12 +23,13 @@ export function restoreSnap(s:User[]){
         delete users[key]
     }
     for(const user of s){
+        console.log('restoring user',user)
         users[user.userId]=user
     }
 }
 export async function loadSnapShot(){
     const snap=await snapshot.findOne().sort({ts:-1}).exec()
-    console.log('snap',snap)
+    console.log('snap',JSON.parse(JSON.stringify(snap)))
     if(snap && snap.snapshot){
         restoreSnap(snap.snapshot as User[])
         console.log('restored snap')

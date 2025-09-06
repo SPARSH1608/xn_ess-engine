@@ -1,7 +1,7 @@
 import type { KafkaResponse } from "./types.js";
 
 export function successKafka(data:any):KafkaResponse{
-      return { success: true, data ,StatusCode:200,tradeId:data.tradeId };
+      return { success: true, data:data.data ,StatusCode:200,tradeId:data.tradeId };
 }
 
 export function failureKafka(err:{error:string,StatusCode:number},tradeId:string): KafkaResponse {

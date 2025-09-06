@@ -8,7 +8,7 @@ export type Trade = {
   margin: number
   leverage: number
   boughtPrice: number
-  type: string
+ 
   status: string
   stopLoss?: number
   takeProfit?: number

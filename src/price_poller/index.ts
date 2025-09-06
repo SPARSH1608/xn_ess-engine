@@ -45,16 +45,19 @@ const processData=(d:backpackData):void=>{
     
 }
 const producer=kafkaClient.producer()
-const PublishDataKafka=async()=>{
-    console.log('prices',prices)
-    await producer.connect()
-         producer.send({
-                topic:'prices',
-                messages:[
-                    {value:JSON.stringify(prices)}
-                ]
-            })
-}
+const PublishDataKafka = async () => {
+    await producer.connect();
+    
+    const pricesObj = Object.fromEntries(prices);  
+
+    await producer.send({
+        topic: 'prices',
+        messages: [
+            { value: JSON.stringify(pricesObj) }
+        ]
+    });
+};
+
 const startPoll=()=>{
     
         const streamUrl=`wss://ws.backpack.exchange`
