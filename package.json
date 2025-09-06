@@ -1,0 +1,33 @@
+{
+  "name": "xn_es",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "npx tsc -b && nodemon dist/price_poller/index.js",
+    "serve": "npx tsc -b && nodemon dist/trade_engine/index.js",
+    "start": "npx tsc -b && nodemon dist/backend/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/kafkajs": "^1.8.2",
+    "@types/mongoose": "^5.11.96",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "http-status-codes": "^2.3.0",
+    "kafkajs": "^2.2.4",
+    "mongodb": "^6.19.0",
+    "mongoose": "^8.18.0",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.3"
+  }
+}
