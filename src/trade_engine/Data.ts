@@ -2,7 +2,6 @@ import type { User } from "./types.js";
 
 export let users: Record<string, User> = {};
 
-// Initialize dummy data
 function initializeDummyData() {
   if (Object.keys(users).length === 0) {
     users["57349_457344_fjsdbfsi"] = {
@@ -13,7 +12,6 @@ function initializeDummyData() {
   }
 }
 
-// Call initialization immediately
 initializeDummyData();
 
 export function getSnapshot(): User[] {
@@ -22,4 +20,9 @@ export function getSnapshot(): User[] {
 
 export function ensureDummyData() {
   initializeDummyData();
+}
+
+export function addUser(user: User) {
+  users[user.userId] = user;
+  console.log('User added to memory:', user.userId);
 }

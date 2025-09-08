@@ -1,9 +1,9 @@
 import type { RequestHandler } from "express"
-import { getLatestPriceFromKafka, sendTrade } from "../utils/KakfaFunctions.js"
+import { cleanupKafka, getLatestPriceFromKafka, initKafka, sendTrade } from "../utils/KakfaFunctions.js"
 import { Trade } from "../Models/Trades.js"
 export const createLong:RequestHandler=async(req,res)=>{
     try {
-        
+        const startTime=Date.now()
         const data=req.body
         console.log('request body',req.body)
         const prices=await getLatestPriceFromKafka(Date.now())
@@ -19,7 +19,10 @@ export const createLong:RequestHandler=async(req,res)=>{
         if(typeof(response)==='object' && Object.keys(response).length===0){
             return res.status(500).json({ error: 'Engine is down' });
         }
-      return res.status(response.StatusCode).json(response.error)
+      
+        console.log('time taken to process trade',Date.now()-startTime)
+
+      return res.status(response.StatusCode).json(response)
     } catch (err) {
            console.error('Error in createLong:', err);
         return res.status(500).json({ error: 'Internal Server Error' });
@@ -43,10 +46,10 @@ export const closeLong:RequestHandler=async(req,res)=>{
         if(typeof(response)==='object' && Object.keys(response).length===0){
             return res.status(500).json({ error: 'Engine is down' });
         }
-        // if(response.success){
-        // await Trade.create(response.data)
-        // }
-      return res.status(response.StatusCode).json(response.error)
+        if(response.success){
+        await Trade.create(response.data)
+        }
+      return res.status(response.StatusCode).json(response)
     } catch (err) {
            console.error('Error in createLong:', err);
         return res.status(500).json({ error: 'Internal Server Error' });
@@ -71,7 +74,7 @@ export const createShort:RequestHandler=async (req,res)=>{
         if(typeof(response)==='object' && Object.keys(response).length===0){
             return res.status(500).json({ error: 'Engine is down' });
         }
-      return res.status(response.StatusCode).json(response.error)
+      return res.status(response.StatusCode).json(response)
     } catch (err) {
            console.error('Error in createLong:', err);
         return res.status(500).json({ error: 'Internal Server Error' });
@@ -97,11 +100,10 @@ export const closeShort:RequestHandler=async(req,res)=>{
         if(typeof(response)==='object' && Object.keys(response).length===0){
             return res.status(500).json({ error: 'Engine is down' });
         }
-        //  if(response.success){
-        // await Trade.create(response.data)
-     
-        // }
-      return res.status(response.StatusCode).json(response.error)
+         if(response.success){
+        await Trade.create(response.data)
+        }
+      return res.status(response.StatusCode).json(response)
     } catch (err) {
            console.error('Error in createLong:', err);
         return res.status(500).json({ error: 'Internal Server Error' });
